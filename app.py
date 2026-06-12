@@ -11,12 +11,6 @@ from email.mime.application import MIMEApplication
 from fpdf import FPDF
 from datetime import datetime
 
-# ================= CONFIGURAÇÕES DE E-MAIL ================= #
-# Substitua pelos seus dados reais
-EMAIL_REMETENTE = "seu_email_que_vai_enviar@gmail.com"
-SENHA_APP_EMAIL = "sua_senha_de_app_de_16_digitos"
-EMAIL_ADMINISTRACAO = "email_da_administracao_que_vai_receber@gmail.com"
-
 # ================= TEMA E CSS SOFISTICADO ================= #
 st.set_page_config(page_title="Sistema de Locação", layout="wide")
 st.markdown("""
@@ -40,7 +34,41 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ================= CONFIGURAÇÕES INICIAIS ================= #
+# ================= SISTEMA DE LOGIN ================= #
+# O administrador pode alterar usuários e senhas aqui a qualquer momento
+USUARIOS_PERMITIDOS = {
+    "admin": "admin123",
+    "recebedor": "Aluguel_2026"
+}
+
+if 'autenticado' not in st.session_state:
+    st.session_state['autenticado'] = False
+
+if not st.session_state['autenticado']:
+    st.title("🔒 Acesso Restrito")
+    st.write("Por favor, insira suas credenciais para acessar o painel de locação.")
+    
+    with st.form("form_login"):
+        usuario_input = st.text_input("Usuário")
+        senha_input = st.text_input("Senha", type="password")
+        submit_login = st.form_submit_button("Entrar no Sistema")
+        
+        if submit_login:
+            if usuario_input in USUARIOS_PERMITIDOS and USUARIOS_PERMITIDOS[usuario_input] == senha_input:
+                st.session_state['autenticado'] = True
+                st.session_state['usuario_logado'] = usuario_input
+                st.rerun()
+            else:
+                st.error("❌ Usuário ou senha incorretos.")
+                
+    st.stop() # Isso bloqueia a execução do resto do código até o login ser feito
+
+# ================= CONFIGURAÇÕES DE E-MAIL ================= #
+EMAIL_REMETENTE = "seu_email_que_vai_enviar@gmail.com"
+SENHA_APP_EMAIL = "sua_senha_de_app_de_16_digitos"
+EMAIL_ADMINISTRACAO = "email_da_administracao_que_vai_receber@gmail.com"
+
+# ================= CONFIGURAÇÕES INICIAIS DA BASE ================= #
 NOME_CSV = "recebimentos_aluguel.xlsx - Cadastro.csv"
 MESES_LISTA = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -110,7 +138,7 @@ def disparar_email_admin(caminho_pdf, nome_locatario, sala, mes_ref, valor_total
     - Sala: {sala}
     - Mês de Referência: {mes_ref}
     - Valor Total Recebido: {formatar_moeda(valor_total)}
-    - Recebedor: {recebedor}
+    - Recebedor/Usuário: {recebedor} (Logado como: {st.session_state.get('usuario_logado', 'N/A')})
     - Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
     
     O recibo oficial em PDF segue em anexo para os registros financeiros.
@@ -133,7 +161,6 @@ def disparar_email_admin(caminho_pdf, nome_locatario, sala, mes_ref, valor_total
         server.quit()
         return True
     except Exception as e:
-        st.error(f"Erro ao enviar o e-mail: {e}")
         return False
 
 def colorir_meses(val):
@@ -285,6 +312,13 @@ def gerar_recibo_pdf(dados):
 # ================= LAYOUT DO APLICATIVO ================= #
 st.title("🏢 Painel Integrado de Alugueres e Recibos")
 
+# Botão de Logout no topo
+col_titulo, col_logout = st.columns([8, 1])
+with col_logout:
+    if st.button("Sair (Logout)"):
+        st.session_state['autenticado'] = False
+        st.rerun()
+
 aba_recibo, aba_cadastro, aba_base = st.tabs([
     "🔍 Pesquisar & Emitir Recibo", "➕ Novo Cadastro (Inquilino)", "📊 Dashboard & Base de Dados"
 ])
@@ -336,7 +370,7 @@ with aba_recibo:
                 venc_str = dados_mes['Vencimento']
                 st.write(f"**Vencimento Original:** {venc_str if venc_str else 'Não definido'}")
                 st.markdown("##### Dados da Emissão")
-                recebedor_input = st.text_input("Nome do Recebedor (Assinatura)", value="Administração")
+                recebedor_input = st.text_input("Nome do Recebedor (Assinatura)", value=st.session_state.get('usuario_logado', 'Administração').capitalize())
             
             with c2:
                 data_pag_input = st.date_input("Data do Pagamento", value=datetime.today(), format="DD/MM/YYYY")
@@ -385,7 +419,6 @@ with aba_recibo:
                 caminho_pdf = gerar_recibo_pdf(dados_para_pdf)
                 st.session_state['caminho_pdf_gerado'] = caminho_pdf
                 
-                # ENVIO DE EMAIL AQUI
                 with st.spinner("Enviando recibo para a Administração..."):
                     sucesso_email = disparar_email_admin(caminho_pdf, registo['Nome'], registo['Sala'], mes_selecionado, valor_total_calculado, recebedor_input)
                 
