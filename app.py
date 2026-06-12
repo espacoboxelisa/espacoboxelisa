@@ -37,8 +37,8 @@ st.markdown("""
 # ================= SISTEMA DE LOGIN ================= #
 # O administrador pode alterar usuários e senhas aqui a qualquer momento
 USUARIOS_PERMITIDOS = {
-    "admin": "admin123456",
-    "recebedor": "Aluguel_2026"
+    "admin": "Elis@6202",
+    "recebedor": "aluguel_2026"
 }
 
 if 'autenticado' not in st.session_state:
