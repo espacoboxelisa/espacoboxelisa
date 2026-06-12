@@ -35,9 +35,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ================= SISTEMA DE LOGIN ================= #
-# O administrador pode alterar usuários e senhas aqui a qualquer momento
 USUARIOS_PERMITIDOS = {
-    "admin": "Elis@6202",
+    "admin": "Elis@_2026",
     "recebedor": "aluguel_2026"
 }
 
@@ -61,18 +60,20 @@ if not st.session_state['autenticado']:
             else:
                 st.error("❌ Usuário ou senha incorretos.")
                 
-    st.stop() # Isso bloqueia a execução do resto do código até o login ser feito
+    st.stop()
 
 # ================= CONFIGURAÇÕES DE E-MAIL ================= #
-EMAIL_REMETENTE = "seu_email_que_vai_enviar@gmail.com"
-SENHA_APP_EMAIL = "sua_senha_de_app_de_16_digitos"
-EMAIL_ADMINISTRACAO = "email_da_administracao_que_vai_receber@gmail.com"
+EMAIL_REMETENTE = "my29house@gmail.com"
+SENHA_APP_EMAIL = "uttehhhxedoflmzi"
+EMAIL_ADMINISTRACAO = "mauriciosaid@.adv.oabsp.org.br, fabianofsilva1977@gmail.com"
 
 # ================= CONFIGURAÇÕES INICIAIS DA BASE ================= #
 NOME_CSV = "recebimentos_aluguel.xlsx - Cadastro.csv"
 MESES_LISTA = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-COLUNAS_BASE = ['Andar', 'Sala', 'Nome', 'CPF', 'Data de Nascimento', 'Endereço', 
+
+# ADICIONADO A COLUNA TELEFONE
+COLUNAS_BASE = ['Andar', 'Sala', 'Nome', 'CPF', 'Data de Nascimento', 'Telefone', 'Endereço', 
                 'E-mail', 'Locador', 'Valor (R$)'] + MESES_LISTA
 
 if 'df_sistema' not in st.session_state:
@@ -94,7 +95,7 @@ if 'df_sistema' not in st.session_state:
     else:
         st.session_state.df_sistema = pd.DataFrame(columns=COLUNAS_BASE)
 
-# ================= FUNÇÕES DO SISTEMA ================= #
+# ================= FUNÇÕES DO SISTEMA E MÁSCARAS ================= #
 def guardar_na_base_dados():
     st.session_state.df_sistema = st.session_state.df_sistema[COLUNAS_BASE]
     st.session_state.df_sistema.to_csv(NOME_CSV, index=False, sep=';', encoding='utf-8-sig')
@@ -117,10 +118,25 @@ def remover_acentos(texto):
     if not isinstance(texto, str): texto = str(texto)
     return "".join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
 
+# NOVAS FUNÇÕES DE MÁSCARA
 def aplicar_mascara_cpf(cpf_str):
     cpf_numeros = re.sub(r'\D', '', str(cpf_str)) 
     if len(cpf_numeros) == 11: return f"{cpf_numeros[:3]}.{cpf_numeros[3:6]}.{cpf_numeros[6:9]}-{cpf_numeros[9:]}"
     return str(cpf_str).strip()
+
+def aplicar_mascara_telefone(tel_str):
+    tel_numeros = re.sub(r'\D', '', str(tel_str))
+    if len(tel_numeros) == 11: # Celular: (XX) XXXXX-XXXX
+        return f"({tel_numeros[:2]}) {tel_numeros[2:7]}-{tel_numeros[7:]}"
+    elif len(tel_numeros) == 10: # Fixo: (XX) XXXX-XXXX
+        return f"({tel_numeros[:2]}) {tel_numeros[2:6]}-{tel_numeros[6:]}"
+    return str(tel_str).strip()
+
+def aplicar_mascara_data(data_str):
+    data_numeros = re.sub(r'\D', '', str(data_str))
+    if len(data_numeros) == 8: # DD/MM/AAAA
+        return f"{data_numeros[:2]}/{data_numeros[2:4]}/{data_numeros[4:]}"
+    return str(data_str).strip()
 
 def disparar_email_admin(caminho_pdf, nome_locatario, sala, mes_ref, valor_total, recebedor):
     msg = MIMEMultipart()
@@ -312,7 +328,6 @@ def gerar_recibo_pdf(dados):
 # ================= LAYOUT DO APLICATIVO ================= #
 st.title("🏢 Painel Integrado de Alugueres e Recibos")
 
-# Botão de Logout no topo
 col_titulo, col_logout = st.columns([8, 1])
 with col_logout:
     if st.button("Sair (Logout)"):
@@ -444,7 +459,9 @@ with aba_cadastro:
             novo_nome = st.text_input("Nome Completo do Locatário")
             novo_cpf = st.text_input("CPF (Opcional)", max_chars=14)
         with col_mid:
-            novo_nascimento = st.text_input("Data de Nascimento (Ex: DD/MM/AAAA)")
+            # ADICIONADOS OS CAMPOS COM INSTRUÇÕES DE MÁSCARA
+            novo_nascimento = st.text_input("Data de Nasc. (Ex: 11121989)", help="Pode digitar apenas números, a barra será inserida ao salvar.")
+            novo_telefone = st.text_input("Telefone/Celular (Ex: 11988887777)", help="Pode digitar apenas números, os parênteses e traço serão inseridos ao salvar.")
             novo_endereco = st.text_area("Endereço Completo")
             novo_email = st.text_input("E-mail de Contato")
         with col_dir:
@@ -467,7 +484,9 @@ with aba_cadastro:
                 else:
                     nova_linha_dados = {
                         'Andar': str(andar_final), 'Sala': str(sala_upper), 'Nome': str(nome_upper), 
-                        'CPF': str(cpf_formatado), 'Data de Nascimento': str(novo_nascimento), 
+                        'CPF': str(cpf_formatado), 
+                        'Data de Nascimento': aplicar_mascara_data(novo_nascimento), # APLICA MÁSCARA DATA
+                        'Telefone': aplicar_mascara_telefone(novo_telefone), # APLICA MÁSCARA TELEFONE
                         'Endereço': str(novo_endereco).upper(), 'E-mail': str(novo_email),
                         'Locador': str(novo_locador).upper(), 'Valor (R$)': f"{novo_valor_aluguel:.2f}".replace('.', ',')
                     }
@@ -543,6 +562,7 @@ with aba_base:
                         
                         edit_cpf = c2.text_input("CPF", value=str(reg_ed['CPF']), max_chars=14)
                         edit_nascimento = c2.text_input("Nascimento", value=str(reg_ed.get('Data de Nascimento', '')))
+                        edit_telefone = c2.text_input("Telefone", value=str(reg_ed.get('Telefone', '')))
                         edit_email = c2.text_input("E-mail", value=str(reg_ed.get('E-mail', '')))
                         
                         edit_endereco = c3.text_input("Endereço", value=str(reg_ed.get('Endereço', '')))
@@ -561,7 +581,8 @@ with aba_base:
                             st.session_state.df_sistema.loc[idx_ed, 'Sala'] = str(edit_sala).strip().upper()
                             st.session_state.df_sistema.loc[idx_ed, 'Nome'] = str(edit_nome).strip().upper()
                             st.session_state.df_sistema.loc[idx_ed, 'CPF'] = aplicar_mascara_cpf(str(edit_cpf).strip().upper())
-                            st.session_state.df_sistema.loc[idx_ed, 'Data de Nascimento'] = str(edit_nascimento).strip()
+                            st.session_state.df_sistema.loc[idx_ed, 'Data de Nascimento'] = aplicar_mascara_data(str(edit_nascimento).strip())
+                            st.session_state.df_sistema.loc[idx_ed, 'Telefone'] = aplicar_mascara_telefone(str(edit_telefone).strip())
                             st.session_state.df_sistema.loc[idx_ed, 'E-mail'] = str(edit_email).strip()
                             st.session_state.df_sistema.loc[idx_ed, 'Endereço'] = str(edit_endereco).strip().upper()
                             st.session_state.df_sistema.loc[idx_ed, 'Locador'] = str(edit_locador).strip().upper()
@@ -572,6 +593,7 @@ with aba_base:
                             st.rerun()
                 else: st.warning("Nenhum registro encontrado.")
 
+    # CORREÇÃO DA LÓGICA DE EXCLUSÃO
     elif acao_db == "🗑️ Excluir Cadastro":
         if not df_atual.empty:
             busca_ex = st.text_input("Introduza o Nome do Locatário ou Sala para Excluir:", key="busca_ex")
@@ -582,10 +604,17 @@ with aba_base:
                     opcoes_ex = [f"Linha {i} | Sala {df_atual.loc[i, 'Sala']} - {df_atual.loc[i, 'Nome']}" for i in res_ex.index]
                     selecao_ex = st.selectbox("Selecione qual cadastro EXCLUIR:", opcoes_ex)
                     idx_ex = res_ex.index[opcoes_ex.index(selecao_ex)]
-                    st.warning(f"Você apagará **{df_atual.loc[idx_ex, 'Nome']}** permanentemente.")
-                    if st.button("🚨 EXCLUIR DEFINITIVAMENTE") and st.checkbox("Tenho certeza"):
-                        st.session_state.df_sistema = st.session_state.df_sistema.drop(idx_ex).reset_index(drop=True)
-                        guardar_na_base_dados()
-                        st.success("🗑️ Linha removida!")
-                        st.rerun()
+                    
+                    st.warning(f"Você apagará **{df_atual.loc[idx_ex, 'Nome']}** permanentemente da base de dados.")
+                    
+                    # A confirmação e o botão agora estão separados para não bugar o Streamlit
+                    confirmar = st.checkbox("Tenho certeza que quero excluir este cadastro.")
+                    if st.button("🚨 EXCLUIR DEFINITIVAMENTE"):
+                        if confirmar:
+                            st.session_state.df_sistema = st.session_state.df_sistema.drop(idx_ex).reset_index(drop=True)
+                            guardar_na_base_dados()
+                            st.success("🗑️ Linha removida!")
+                            st.rerun()
+                        else:
+                            st.error("⚠️ Para excluir, marque a caixa de confirmação primeiro.")
                 else: st.warning("Nenhum registro encontrado.")
