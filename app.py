@@ -65,7 +65,7 @@ if not st.session_state['autenticado']:
 # ================= CONFIGURAÇÕES DE E-MAIL ================= #
 EMAIL_REMETENTE = "my29house@gmail.com"
 SENHA_APP_EMAIL = "nixhkcpnhmyqwyhu"
-EMAIL_ADMINISTRACAO = "mauriciosaid@.adv.oabsp.org.br, fabianofsilva1977@gmail.com, condominioflor6@gmail.com, my29house@gmail.com"
+EMAIL_ADMINISTRACAO = "mauriciosaid@.adv.oabsp.org.br, condominioflor6@gmail.com"
 
 # ================= CONFIGURAÇÕES INICIAIS DA BASE ================= #
 NOME_CSV = "recebimentos_aluguel.xlsx - Cadastro.csv"
