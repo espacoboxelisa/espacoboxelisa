@@ -63,9 +63,9 @@ if not st.session_state['autenticado']:
     st.stop()
 
 # ================= CONFIGURAÇÕES DE E-MAIL ================= #
-EMAIL_REMETENTE = "my29house@gmail.com"
-SENHA_APP_EMAIL = "nixhkcpnhmyqwyhu"
-EMAIL_ADMINISTRACAO = "mauriciosaid@.adv.oabsp.org.br, fabianofsilva1977@gmail.com"
+EMAIL_REMETENTE = "seu_email_que_vai_enviar@gmail.com"
+SENHA_APP_EMAIL = "sua_senha_de_app_de_16_digitos"
+EMAIL_ADMINISTRACAO = "email_da_administracao_que_vai_receber@gmail.com"
 
 # ================= CONFIGURAÇÕES INICIAIS DA BASE ================= #
 NOME_CSV = "recebimentos_aluguel.xlsx - Cadastro.csv"
@@ -213,122 +213,121 @@ def mapear_dados_mes(celula, valor_base, andar, sala, nome, cpf, mes_nome):
             elif parte.startswith("VENC:"): dados['Vencimento'] = parte.split(':')[1].strip()
     return dados
 
-# ================= GERADOR DE PDF AJUSTADO (MPT-II 40mm) ================= #
+# ================= SOLUÇÃO AVASSALADORA: MPT-II + RAWBT ================= #
 def gerar_recibo_pdf(dados):
-    # Formato adaptado: 58mm total, Altura reduzida para 140mm (elimina folha em branco extra e caracteres estranhos)
-    pdf = FPDF(orientation='P', unit='mm', format=(58, 140))
+    # PDF fisicamente mais estreito (48mm). Impede o RawBT de o encostar à berma!
+    pdf = FPDF(orientation='P', unit='mm', format=(48, 160))
     
-    # Margem esquerda aumentada para 9mm (empurra os 40mm seguros perfeitamente para o centro)
-    pdf.set_margins(left=9, top=5, right=2)
+    # Margens hiper controladas. 
+    pdf.set_margins(left=2, top=4, right=2)
     pdf.add_page()
-    pdf.set_line_width(0.3)
+    pdf.set_line_width(0.2)
     pdf.set_text_color(0, 0, 0)
 
-    # Largura de segurança estritamente controlada para 40mm
-    LARGURA_SEGURA = 40
+    # Área útil rigorosa de 44mm. FPDF fará a quebra de linha (Wrap) automaticamente.
+    W = 44 
 
-    pdf.set_font("Helvetica", 'B', 9)
-    pdf.multi_cell(LARGURA_SEGURA, 4, "ESPACO BOX ELISA\nRECIBO DE PAGAMENTO\nDE ALUGUEL", align='C')
-    pdf.ln(2)
-    pdf.line(9, pdf.get_y(), 9 + LARGURA_SEGURA, pdf.get_y())
-    pdf.ln(2)
-    
     pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(10, 4, "Ref:", 0, 0)
-    pdf.set_font("Helvetica", '', 8)
-    pdf.cell(30, 4, remover_acentos(str(dados.get('Mês de Referencia', ''))).upper(), 0, 1)
+    pdf.multi_cell(W, 3.5, "ESPACO BOX ELISA\nRECIBO DE ALUGUEL", align='C')
+    pdf.ln(1)
+    pdf.line(2, pdf.get_y(), 46, pdf.get_y())
+    pdf.ln(1.5)
     
-    pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(LARGURA_SEGURA, 4, "Locatario:", 0, 1)
-    pdf.set_font("Helvetica", '', 8)
+    pdf.set_font("Helvetica", 'B', 7)
+    pdf.cell(10, 3.5, "Ref:", 0, 0)
+    pdf.set_font("Helvetica", '', 7)
+    pdf.cell(34, 3.5, remover_acentos(str(dados.get('Mês de Referencia', ''))).upper(), 0, 1)
+    
+    pdf.set_font("Helvetica", 'B', 7)
+    pdf.cell(W, 3.5, "Locatario:", 0, 1)
+    pdf.set_font("Helvetica", '', 7)
     cpf = str(dados.get('CPF', '')).strip()
     nome_completo = remover_acentos(str(dados.get('Nome', ''))).upper()
     if cpf: nome_completo += f"\nCPF: {cpf}"
-    pdf.multi_cell(LARGURA_SEGURA, 4, nome_completo)
+    # multi_cell obriga as frases compridas a descerem para a linha seguinte
+    pdf.multi_cell(W, 3.5, nome_completo) 
     
-    pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(10, 4, "Sala:", 0, 0)
-    pdf.set_font("Helvetica", '', 8)
-    pdf.cell(30, 4, f"{str(dados.get('Sala', '')).upper()} ({str(dados.get('Andar', '')).upper()})", 0, 1)
+    pdf.set_font("Helvetica", 'B', 7)
+    pdf.cell(10, 3.5, "Sala:", 0, 0)
+    pdf.set_font("Helvetica", '', 7)
+    pdf.cell(34, 3.5, f"{str(dados.get('Sala', '')).upper()} ({str(dados.get('Andar', '')).upper()})", 0, 1)
     
-    pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(10, 4, "Venc.:", 0, 0)
-    pdf.set_font("Helvetica", '', 8)
-    pdf.cell(30, 4, str(dados.get('Vencimento', '')), 0, 1)
+    pdf.set_font("Helvetica", 'B', 7)
+    pdf.cell(10, 3.5, "Venc.:", 0, 0)
+    pdf.set_font("Helvetica", '', 7)
+    pdf.cell(34, 3.5, str(dados.get('Vencimento', '')), 0, 1)
 
-    pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(14, 4, "Pago em:", 0, 0)
-    pdf.set_font("Helvetica", '', 8)
-    pdf.cell(26, 4, str(dados.get('Data do Pagamento', '')), 0, 1)
+    pdf.set_font("Helvetica", 'B', 7)
+    pdf.cell(13, 3.5, "Pago em:", 0, 0)
+    pdf.set_font("Helvetica", '', 7)
+    pdf.cell(31, 3.5, str(dados.get('Data do Pagamento', '')), 0, 1)
     
     dias_atraso = dados.get('Dias de Atraso', 0)
     if dias_atraso > 0:
         pdf.ln(1)
-        pdf.set_font("Helvetica", 'BI', 7.5)
-        pdf.set_text_color(200, 0, 0)
-        pdf.multi_cell(LARGURA_SEGURA, 3.5, f"PAGO COM {dias_atraso} DIA(S) DE ATRASO")
-        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("Helvetica", 'B', 6.5)
+        pdf.multi_cell(W, 3, f"PAGO COM {dias_atraso} DIA(S)\nDE ATRASO", align='C')
     
-    pdf.ln(2)
-    pdf.line(9, pdf.get_y(), 9 + LARGURA_SEGURA, pdf.get_y())
-    pdf.ln(2)
+    pdf.ln(1)
+    pdf.line(2, pdf.get_y(), 46, pdf.get_y())
+    pdf.ln(1.5)
     
     valor_aluguel = converter_para_float(dados.get('Valor (R$)', 0))
     juros = converter_para_float(dados.get('Juros', 0))
     multa = converter_para_float(dados.get('Multa', 0))
     total_recebido = converter_para_float(dados.get('Valor Recebido', 0))
 
-    pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(16, 4, "Aluguel:", 0, 0)
-    pdf.set_font("Helvetica", '', 8)
-    pdf.cell(24, 4, formatar_moeda(valor_aluguel), 0, 1, 'R')
+    pdf.set_font("Helvetica", 'B', 7)
+    pdf.cell(14, 3.5, "Aluguel:", 0, 0)
+    pdf.set_font("Helvetica", '', 7)
+    pdf.cell(30, 3.5, formatar_moeda(valor_aluguel), 0, 1, 'R')
     
-    pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(20, 4, "Juros Pr-Rata:", 0, 0)
-    pdf.set_font("Helvetica", '', 8)
-    pdf.cell(20, 4, formatar_moeda(juros), 0, 1, 'R')
-    
-    pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(16, 4, "Multa:", 0, 0)
-    pdf.set_font("Helvetica", '', 8)
-    pdf.cell(24, 4, formatar_moeda(multa), 0, 1, 'R')
+    if juros > 0 or multa > 0:
+        pdf.set_font("Helvetica", 'B', 7)
+        pdf.cell(18, 3.5, "Juros/Multa:", 0, 0)
+        pdf.set_font("Helvetica", '', 7)
+        pdf.cell(26, 3.5, formatar_moeda(juros + multa), 0, 1, 'R')
     
     pdf.ln(1)
-    pdf.set_font("Helvetica", 'B', 9)
-    pdf.cell(16, 5, "TOTAL:", 0, 0)
-    pdf.cell(24, 5, formatar_moeda(total_recebido), 0, 1, 'R')
-    
-    pdf.ln(2)
-    pdf.line(9, pdf.get_y(), 9 + LARGURA_SEGURA, pdf.get_y())
-    pdf.ln(2)
-    
     pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(12, 4, "Forma:", 0, 0)
-    pdf.set_font("Helvetica", '', 8)
-    pdf.cell(28, 4, remover_acentos(str(dados.get('Forma de Pagamento', ''))).upper(), 0, 1)
+    pdf.cell(14, 4, "TOTAL:", 0, 0)
+    pdf.cell(30, 4, formatar_moeda(total_recebido), 0, 1, 'R')
+    
+    pdf.ln(1.5)
+    pdf.line(2, pdf.get_y(), 46, pdf.get_y())
+    pdf.ln(1.5)
+    
+    pdf.set_font("Helvetica", 'B', 7)
+    pdf.cell(10, 3.5, "Forma:", 0, 0)
+    pdf.set_font("Helvetica", '', 7)
+    pdf.cell(34, 3.5, remover_acentos(str(dados.get('Forma de Pagamento', ''))).upper(), 0, 1)
     
     obs = remover_acentos(str(dados.get('Observações', ''))).strip().upper()
     if obs and obs != "NENHUMA" and obs != "NAN":
-        pdf.set_font("Helvetica", 'B', 8)
-        pdf.cell(LARGURA_SEGURA, 4, "Obs:", 0, 1)
-        pdf.set_font("Helvetica", '', 7.5)
-        pdf.multi_cell(LARGURA_SEGURA, 3.5, obs)
+        pdf.set_font("Helvetica", 'B', 7)
+        pdf.cell(W, 3.5, "Obs:", 0, 1)
+        pdf.set_font("Helvetica", '', 6.5)
+        pdf.multi_cell(W, 3, obs)
         
-    pdf.ln(6)
+    pdf.ln(4)
     
     locador_nome = remover_acentos(str(dados.get('Locador', 'LOCADOR')).upper())
     recebedor_nome = remover_acentos(str(dados.get('Recebedor', 'RECEBEDOR')).upper())
     
-    pdf.set_font("Helvetica", '', 7)
-    pdf.cell(LARGURA_SEGURA, 3, "________________________", 0, 1, 'C')
-    pdf.set_font("Helvetica", 'B', 7.5)
-    pdf.multi_cell(LARGURA_SEGURA, 3.5, f"LOCADOR: {locador_nome}", align='C')
+    pdf.set_font("Helvetica", '', 6)
+    pdf.cell(W, 2, "___________________________", 0, 1, 'C')
+    pdf.set_font("Helvetica", 'B', 6.5)
+    pdf.multi_cell(W, 3, f"LOCADOR: {locador_nome}", align='C')
     
-    pdf.ln(4)
-    pdf.set_font("Helvetica", '', 7)
-    pdf.cell(LARGURA_SEGURA, 3, "________________________", 0, 1, 'C')
-    pdf.set_font("Helvetica", 'B', 7.5)
-    pdf.multi_cell(LARGURA_SEGURA, 3.5, f"RECEBEDOR: {recebedor_nome}", align='C')
+    pdf.ln(3)
+    pdf.set_font("Helvetica", '', 6)
+    pdf.cell(W, 2, "___________________________", 0, 1, 'C')
+    pdf.set_font("Helvetica", 'B', 6.5)
+    pdf.multi_cell(W, 3, f"RECEBEDOR: {recebedor_nome}", align='C')
+    
+    # ⚠️ O truque para afastar a Marca de Água do RawBT ⚠️
+    # Adicionamos linhas vazias para proteger a assinatura
+    pdf.ln(10)
     
     mes_ref_limpo = remover_acentos(str(dados.get('Mês de Referencia', 'Sem_Mes'))).replace("/", "-")
     data_pag_limpa = str(dados.get('Data do Pagamento', 'Sem_Data')).replace("/", "-")
