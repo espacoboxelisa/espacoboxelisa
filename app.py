@@ -36,8 +36,8 @@ st.markdown("""
 
 # ================= SISTEMA DE LOGIN ================= #
 USUARIOS_PERMITIDOS = {
-    "admin": "Elis@_2026",
-    "recebedor": "aluguel_2026"
+    "admin": "admin123",
+    "recebedor": "aluguel2026"
 }
 
 if 'autenticado' not in st.session_state:
@@ -45,7 +45,7 @@ if 'autenticado' not in st.session_state:
 
 if not st.session_state['autenticado']:
     st.title("🔒 Acesso Restrito")
-    st.write("Por favor, insira suas credenciais para acessar o painel de locação.")
+    st.write("Por favor, insira as suas credenciais para aceder ao painel de locação.")
     
     with st.form("form_login"):
         usuario_input = st.text_input("Usuário")
@@ -63,16 +63,15 @@ if not st.session_state['autenticado']:
     st.stop()
 
 # ================= CONFIGURAÇÕES DE E-MAIL ================= #
-EMAIL_REMETENTE = "my29house@gmail.com"
-SENHA_APP_EMAIL = "uttehhhxedoflmzi"
-EMAIL_ADMINISTRACAO = "mauriciosaid@.adv.oabsp.org.br, fabianofsilva1977@gmail.com"
+EMAIL_REMETENTE = "seu_email_que_vai_enviar@gmail.com"
+SENHA_APP_EMAIL = "sua_senha_de_app_de_16_digitos"
+EMAIL_ADMINISTRACAO = "email_da_administracao_que_vai_receber@gmail.com"
 
 # ================= CONFIGURAÇÕES INICIAIS DA BASE ================= #
 NOME_CSV = "recebimentos_aluguel.xlsx - Cadastro.csv"
 MESES_LISTA = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
-# ADICIONADO A COLUNA TELEFONE
 COLUNAS_BASE = ['Andar', 'Sala', 'Nome', 'CPF', 'Data de Nascimento', 'Telefone', 'Endereço', 
                 'E-mail', 'Locador', 'Valor (R$)'] + MESES_LISTA
 
@@ -118,25 +117,25 @@ def remover_acentos(texto):
     if not isinstance(texto, str): texto = str(texto)
     return "".join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
 
-# NOVAS FUNÇÕES DE MÁSCARA
+# FUNÇÕES DE MÁSCARA FORÇANDO O RETORNO EM CAIXA ALTA CASO HAJA TEXTO
 def aplicar_mascara_cpf(cpf_str):
     cpf_numeros = re.sub(r'\D', '', str(cpf_str)) 
     if len(cpf_numeros) == 11: return f"{cpf_numeros[:3]}.{cpf_numeros[3:6]}.{cpf_numeros[6:9]}-{cpf_numeros[9:]}"
-    return str(cpf_str).strip()
+    return str(cpf_str).strip().upper()
 
 def aplicar_mascara_telefone(tel_str):
     tel_numeros = re.sub(r'\D', '', str(tel_str))
-    if len(tel_numeros) == 11: # Celular: (XX) XXXXX-XXXX
+    if len(tel_numeros) == 11: 
         return f"({tel_numeros[:2]}) {tel_numeros[2:7]}-{tel_numeros[7:]}"
-    elif len(tel_numeros) == 10: # Fixo: (XX) XXXX-XXXX
+    elif len(tel_numeros) == 10: 
         return f"({tel_numeros[:2]}) {tel_numeros[2:6]}-{tel_numeros[6:]}"
-    return str(tel_str).strip()
+    return str(tel_str).strip().upper()
 
 def aplicar_mascara_data(data_str):
     data_numeros = re.sub(r'\D', '', str(data_str))
-    if len(data_numeros) == 8: # DD/MM/AAAA
+    if len(data_numeros) == 8: 
         return f"{data_numeros[:2]}/{data_numeros[2:4]}/{data_numeros[4:]}"
-    return str(data_str).strip()
+    return str(data_str).strip().upper()
 
 def disparar_email_admin(caminho_pdf, nome_locatario, sala, mes_ref, valor_total, recebedor):
     msg = MIMEMultipart()
@@ -157,27 +156,24 @@ def disparar_email_admin(caminho_pdf, nome_locatario, sala, mes_ref, valor_total
     - Recebedor/Usuário: {recebedor} (Logado como: {st.session_state.get('usuario_logado', 'N/A')})
     - Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
     
-    O recibo oficial em PDF segue em anexo para os registros financeiros.
+    O recibo oficial segue em anexo.
     
     Att,
     Painel de Locação Automatizado
     """
     msg.attach(MIMEText(corpo, 'plain'))
-
     try:
         with open(caminho_pdf, "rb") as f:
             anexo = MIMEApplication(f.read(), _subtype="pdf")
             anexo.add_header('Content-Disposition', 'attachment', filename=os.path.basename(caminho_pdf))
             msg.attach(anexo)
-
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(EMAIL_REMETENTE, SENHA_APP_EMAIL)
         server.send_message(msg)
         server.quit()
         return True
-    except Exception as e:
-        return False
+    except: return False
 
 def colorir_meses(val):
     if not isinstance(val, str) or val.strip() == "": return ""
@@ -219,99 +215,112 @@ def mapear_dados_mes(celula, valor_base, andar, sala, nome, cpf, mes_nome):
     return dados
 
 def gerar_recibo_pdf(dados):
-    pdf = FPDF()
+    pdf = FPDF(orientation='P', unit='mm', format=(58, 220))
+    pdf.set_margins(left=3, top=5, right=3)
     pdf.add_page()
+    pdf.set_line_width(0.3)
+    pdf.set_text_color(0, 0, 0)
+
+    pdf.set_font("Helvetica", 'B', 10)
+    pdf.multi_cell(52, 5, "RECIBO DE PAGAMENTO\nDE ALUGUEL", align='C')
+    pdf.ln(2)
+    pdf.line(3, pdf.get_y(), 55, pdf.get_y())
+    pdf.ln(2)
+    
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.cell(15, 4, "Ref:", 0, 0)
+    pdf.set_font("Helvetica", '', 8)
+    pdf.cell(37, 4, remover_acentos(str(dados.get('Mês de Referencia', ''))).upper(), 0, 1)
+    
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.cell(52, 4, "Locatario:", 0, 1)
+    pdf.set_font("Helvetica", '', 8)
+    cpf = str(dados.get('CPF', '')).strip()
+    nome_completo = remover_acentos(str(dados.get('Nome', ''))).upper()
+    if cpf: nome_completo += f"\nCPF: {cpf}"
+    pdf.multi_cell(52, 4, nome_completo)
+    
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.cell(15, 4, "Sala:", 0, 0)
+    pdf.set_font("Helvetica", '', 8)
+    pdf.cell(37, 4, f"{str(dados.get('Sala', '')).upper()} ({str(dados.get('Andar', '')).upper()})", 0, 1)
+    
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.cell(15, 4, "Venc.:", 0, 0)
+    pdf.set_font("Helvetica", '', 8)
+    pdf.cell(37, 4, str(dados.get('Vencimento', '')), 0, 1)
+
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.cell(15, 4, "Pago em:", 0, 0)
+    pdf.set_font("Helvetica", '', 8)
+    pdf.cell(37, 4, str(dados.get('Data do Pagamento', '')), 0, 1)
+    
+    dias_atraso = dados.get('Dias de Atraso', 0)
+    if dias_atraso > 0:
+        pdf.ln(1)
+        pdf.set_font("Helvetica", 'B', 7.5)
+        pdf.multi_cell(52, 3.5, f"PAGO COM {dias_atraso} DIA(S) DE ATRASO")
+    
+    pdf.ln(2)
+    pdf.line(3, pdf.get_y(), 55, pdf.get_y())
+    pdf.ln(2)
     
     valor_aluguel = converter_para_float(dados.get('Valor (R$)', 0))
     juros = converter_para_float(dados.get('Juros', 0))
     multa = converter_para_float(dados.get('Multa', 0))
     total_recebido = converter_para_float(dados.get('Valor Recebido', 0))
 
-    pdf.set_font("Helvetica", 'B', 16)
-    pdf.cell(0, 15, "RECIBO DE PAGAMENTO DE ALUGUEL", ln=True, align='C')
-    pdf.ln(4)
-    pdf.line(10, 28, 200, 28)
-    pdf.ln(5)
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.cell(22, 4, "Aluguel:", 0, 0)
+    pdf.set_font("Helvetica", '', 8)
+    pdf.cell(30, 4, formatar_moeda(valor_aluguel), 0, 1, 'R')
     
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(45, 8, "Mes de Referencia:", 0, 0)
-    pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 8, remover_acentos(str(dados.get('Mês de Referencia', ''))).upper(), 0, 1)
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.cell(22, 4, "Juros Pr-Rata:", 0, 0)
+    pdf.set_font("Helvetica", '', 8)
+    pdf.cell(30, 4, formatar_moeda(juros), 0, 1, 'R')
     
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(45, 8, "Locatario:", 0, 0)
-    pdf.set_font("Helvetica", size=11)
-    cpf = str(dados.get('CPF', '')).strip()
-    pdf.cell(0, 8, f"{remover_acentos(str(dados.get('Nome', ''))).upper()}{f' (CPF: {cpf})' if cpf else ''}", 0, 1)
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.cell(22, 4, "Multa:", 0, 0)
+    pdf.set_font("Helvetica", '', 8)
+    pdf.cell(30, 4, formatar_moeda(multa), 0, 1, 'R')
     
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(45, 8, "Localizacao / Sala:", 0, 0)
-    pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 8, f"SALA {str(dados.get('Sala', '')).upper()} - ANDAR: {remover_acentos(str(dados.get('Andar', ''))).upper()}", 0, 1)
-    
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(45, 8, "Vencimento Original:", 0, 0)
-    pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 8, str(dados.get('Vencimento', '')), 0, 1)
-
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(45, 8, "Data do Pagamento:", 0, 0)
-    pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 8, str(dados.get('Data do Pagamento', '')), 0, 1)
-    
-    dias_atraso = dados.get('Dias de Atraso', 0)
-    if dias_atraso > 0:
-        pdf.set_font("Helvetica", 'BI', 10)
-        pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 8, f"Pagamento efetuado com {dias_atraso} dia(s) de atraso. Sujeito a correcoes.", 0, 1)
-        pdf.set_text_color(0, 0, 0)
+    pdf.ln(1)
+    pdf.set_font("Helvetica", 'B', 9)
+    pdf.cell(22, 5, "TOTAL:", 0, 0)
+    pdf.cell(30, 5, formatar_moeda(total_recebido), 0, 1, 'R')
     
     pdf.ln(2)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(5)
-    
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(45, 8, "Valor do Aluguel:", 0, 0)
-    pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 8, formatar_moeda(valor_aluguel), 0, 1)
-    
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(45, 8, "Juros:", 0, 0)
-    pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 8, formatar_moeda(juros), 0, 1)
-    
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(45, 8, "Multa:", 0, 0)
-    pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 8, formatar_moeda(multa), 0, 1)
-    
+    pdf.line(3, pdf.get_y(), 55, pdf.get_y())
     pdf.ln(2)
-    pdf.set_font("Helvetica", 'B', 13)
-    pdf.cell(45, 10, "TOTAL RECEBIDO:", 0, 0)
-    pdf.cell(0, 10, formatar_moeda(total_recebido), 0, 1)
     
-    pdf.ln(2)
-    pdf.set_font("Helvetica", 'B', 11)
-    pdf.cell(45, 8, "Forma de Pagamento:", 0, 0)
-    pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 8, remover_acentos(str(dados.get('Forma de Pagamento', ''))).upper(), 0, 1)
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.cell(15, 4, "Forma:", 0, 0)
+    pdf.set_font("Helvetica", '', 8)
+    pdf.cell(37, 4, remover_acentos(str(dados.get('Forma de Pagamento', ''))).upper(), 0, 1)
     
     obs = remover_acentos(str(dados.get('Observações', ''))).strip().upper()
-    if obs and obs != "NAN":
-        pdf.set_font("Helvetica", 'B', 11)
-        pdf.cell(0, 8, "Observacoes:", 0, 1)
-        pdf.set_font("Helvetica", size=11)
-        pdf.multi_cell(0, 8, obs)
+    if obs and obs != "NENHUMA" and obs != "NAN":
+        pdf.set_font("Helvetica", 'B', 8)
+        pdf.cell(52, 4, "Obs:", 0, 1)
+        pdf.set_font("Helvetica", '', 7.5)
+        pdf.multi_cell(52, 3.5, obs)
         
-    pdf.ln(20)
+    pdf.ln(6)
     
     locador_nome = remover_acentos(str(dados.get('Locador', 'LOCADOR')).upper())
     recebedor_nome = remover_acentos(str(dados.get('Recebedor', 'RECEBEDOR')).upper())
     
-    pdf.cell(90, 8, "___________________________________", 0, 0, 'C')
-    pdf.cell(90, 8, "___________________________________", 0, 1, 'C')
-    pdf.cell(90, 6, f"LOCADOR: {locador_nome}", 0, 0, 'C')
-    pdf.cell(90, 6, f"RECEBEDOR: {recebedor_nome}", 0, 1, 'C')
+    pdf.set_font("Helvetica", '', 7)
+    pdf.cell(52, 3, "___________________________________", 0, 1, 'C')
+    pdf.set_font("Helvetica", 'B', 7.5)
+    pdf.multi_cell(52, 3.5, f"LOCADOR: {locador_nome}", align='C')
+    
+    pdf.ln(4)
+    pdf.set_font("Helvetica", '', 7)
+    pdf.cell(52, 3, "___________________________________", 0, 1, 'C')
+    pdf.set_font("Helvetica", 'B', 7.5)
+    pdf.multi_cell(52, 3.5, f"RECEBEDOR: {recebedor_nome}", align='C')
     
     mes_ref_limpo = remover_acentos(str(dados.get('Mês de Referencia', 'Sem_Mes'))).replace("/", "-")
     data_pag_limpa = str(dados.get('Data do Pagamento', 'Sem_Data')).replace("/", "-")
@@ -325,9 +334,7 @@ def gerar_recibo_pdf(dados):
     pdf.output(caminho_completo)
     return caminho_completo
 
-# ================= LAYOUT DO APLICATIVO ================= #
-st.title("🏢 Painel Integrado de Alugueres e Recibos")
-
+# ================= CONFIGURAÇÃO DAS ABAS ================= #
 col_titulo, col_logout = st.columns([8, 1])
 with col_logout:
     if st.button("Sair (Logout)"):
@@ -373,7 +380,7 @@ with aba_recibo:
             st.write("---")
             if dados_mes['Status'] == 'Pago': st.warning(f"⚠️ O mês de **{mes_selecionado}** já consta como **PAGO** em {dados_mes['Data do Pagamento']}.")
             elif dados_mes['Status'] == 'Pré-contrato': st.error(f"⚠️ **{mes_selecionado}** é um mês anterior ao início do contrato deste inquilino.")
-            else: st.info(f"📅 Status Atual de **{mes_selecionado}**: {celula_atual}")
+            else: st.info(f"📅 Status de Vencimento de **{mes_selecionado}**: {celula_atual}")
                 
             c1, c2 = st.columns(2)
             valor_base_seguro = converter_para_float(registo.get('Valor (R$)', 0))
@@ -385,7 +392,7 @@ with aba_recibo:
                 venc_str = dados_mes['Vencimento']
                 st.write(f"**Vencimento Original:** {venc_str if venc_str else 'Não definido'}")
                 st.markdown("##### Dados da Emissão")
-                recebedor_input = st.text_input("Nome do Recebedor (Assinatura)", value=st.session_state.get('usuario_logado', 'Administração').capitalize())
+                recebedor_input = st.text_input("Nome do Recebedor (Assinatura)", value=st.session_state.get('usuario_logado', 'Administração').upper())
             
             with c2:
                 data_pag_input = st.date_input("Data do Pagamento", value=datetime.today(), format="DD/MM/YYYY")
@@ -395,7 +402,7 @@ with aba_recibo:
                         dias_atraso = max(0, (data_pag_input - datetime.strptime(venc_str, "%d/%m/%Y").date()).days)
                     except: pass
                 
-                if dias_atraso > 0: st.error(f"🚨 **ALERTA:** Pagamento com **{dias_atraso} dias de atraso**.")
+                if dias_atraso > 0: st.error(f"🚨 **ALERTA:** Pagamento efetuado com **{dias_atraso} dias de atraso**.")
                 elif dados_mes['Status'] != 'Pré-contrato': st.success("✅ Pagamento dentro do prazo estipulado.")
                     
                 taxa_multa_pct = st.number_input("Multa (%)", min_value=0.0, value=2.0 if dias_atraso > 0 else 0.0, step=0.50, format="%.2f")
@@ -415,9 +422,10 @@ with aba_recibo:
             """, unsafe_allow_html=True)
             
             if st.button("💾 Confirmar Pagamento e Gerar PDF", type="primary", use_container_width=True):
-                obs_final = str(observacoes_input).upper() if str(observacoes_input).strip() else "NENHUMA"
+                obs_final = str(observacoes_input).upper().strip() if str(observacoes_input).strip() else "NENHUMA"
                 data_pag_str = data_pag_input.strftime("%d/%m/%Y")
                 venc_salvo = venc_str if venc_str else "11/11/2222"
+                recebedor_final = str(recebedor_input).upper().strip()
                 
                 celula_nova = f"PAGO em {data_pag_str} | Total: {valor_total_calculado:.2f} | Juros: {valor_juros_reais:.2f} | Multa: {valor_multa_reais:.2f} | Forma: {forma_pagamento.upper()} | Obs: {obs_final} | Venc: {venc_salvo}"
                 st.session_state.df_sistema.loc[idx_real, mes_selecionado] = celula_nova
@@ -428,21 +436,21 @@ with aba_recibo:
                     'Mês de Referencia': mes_selecionado.upper(), 'Vencimento': venc_salvo, 'Valor (R$)': valor_base_seguro,
                     'Data do Pagamento': data_pag_str, 'Juros': valor_juros_reais, 'Multa': valor_multa_reais,
                     'Valor Recebido': valor_total_calculado, 'Forma de Pagamento': forma_pagamento, 'Observações': obs_final,
-                    'Dias de Atraso': dias_atraso, 'Locador': registo.get('Locador', ''), 'Recebedor': recebedor_input
+                    'Dias de Atraso': dias_atraso, 'Locador': registo.get('Locador', ''), 'Recebedor': recebedor_final
                 }
                 
                 caminho_pdf = gerar_recibo_pdf(dados_para_pdf)
                 st.session_state['caminho_pdf_gerado'] = caminho_pdf
                 
-                with st.spinner("Enviando recibo para a Administração..."):
-                    sucesso_email = disparar_email_admin(caminho_pdf, registo['Nome'], registo['Sala'], mes_selecionado, valor_total_calculado, recebedor_input)
+                with st.spinner("A enviar recibo para a Administração..."):
+                    sucesso_email = disparar_email_admin(caminho_pdf, registo['Nome'], registo['Sala'], mes_selecionado, valor_total_calculado, recebedor_final)
                 
-                if sucesso_email: st.success(f"🎉 Baixa efetuada em {mes_selecionado} e E-mail enviado com sucesso!")
-                else: st.warning(f"Baixa efetuada e PDF gerado, mas ocorreu um erro ao enviar o e-mail (Verifique as credenciais).")
+                if sucesso_email: st.success(f"🎉 Baixa efetuada em {mes_selecionado} e E-mail enviado!")
+                else: st.warning(f"Baixa efetuada e PDF gerado, mas ocorreu uma falha no envio do e-mail de alerta.")
                 
             if 'caminho_pdf_gerado' in st.session_state and os.path.exists(st.session_state['caminho_pdf_gerado']):
                 with open(st.session_state['caminho_pdf_gerado'], "rb") as arquivo:
-                    st.download_button("📥 Descarregar PDF de " + mes_selecionado, data=arquivo.read(), file_name=os.path.basename(st.session_state['caminho_pdf_gerado']), mime="application/pdf", type="secondary", use_container_width=True)
+                    st.download_button("📥 Descarregar PDF (MPT-II 58mm)", data=arquivo.read(), file_name=os.path.basename(st.session_state['caminho_pdf_gerado']), mime="application/pdf", type="secondary", use_container_width=True)
         else:
             st.warning("⚠️ Nenhum registro encontrado.")
 
@@ -459,9 +467,8 @@ with aba_cadastro:
             novo_nome = st.text_input("Nome Completo do Locatário")
             novo_cpf = st.text_input("CPF (Opcional)", max_chars=14)
         with col_mid:
-            # ADICIONADOS OS CAMPOS COM INSTRUÇÕES DE MÁSCARA
-            novo_nascimento = st.text_input("Data de Nasc. (Ex: 11121989)", help="Pode digitar apenas números, a barra será inserida ao salvar.")
-            novo_telefone = st.text_input("Telefone/Celular (Ex: 11988887777)", help="Pode digitar apenas números, os parênteses e traço serão inseridos ao salvar.")
+            novo_nascimento = st.text_input("Data de Nasc. (Ex: 11121989)", help="Digite apenas números.")
+            novo_telefone = st.text_input("Telefone/Celular (Ex: 11988887777)", help="Digite apenas números.")
             novo_endereco = st.text_area("Endereço Completo")
             novo_email = st.text_input("E-mail de Contato")
         with col_dir:
@@ -472,23 +479,25 @@ with aba_cadastro:
             dia_vencimento = st.number_input("Dia Fixo de Vencimento (Ex: 11)", min_value=1, max_value=31, value=11, step=1)
             
         if st.form_submit_button("Gravar Cadastro na Base"):
-            andar_final = novo_andar_custom.strip().upper() if andar_selecionado == "OUTRO" else andar_selecionado
-            sala_upper = nova_sala.strip().upper()
-            nome_upper = novo_nome.strip().upper()
-            cpf_formatado = aplicar_mascara_cpf(novo_cpf.strip().upper())
+            andar_final = str(novo_andar_custom).strip().upper() if andar_selecionado == "OUTRO" else andar_selecionado
+            sala_upper = str(nova_sala).strip().upper()
+            nome_upper = str(novo_nome).strip().upper()
+            cpf_formatado = aplicar_mascara_cpf(novo_cpf)
             
             if nome_upper and sala_upper and andar_final:
                 df_atual = st.session_state.df_sistema
                 if not df_atual[(df_atual['Nome'].astype(str).str.upper() == nome_upper) & (df_atual['Sala'].astype(str).str.upper() == sala_upper)].empty:
                     st.error(f"❌ Erro: '{nome_upper}' já está cadastrado na Sala '{sala_upper}'!")
                 else:
+                    # FORÇANDO TODOS OS CAMPOS DO CADASTRO EM CAIXA ALTA
                     nova_linha_dados = {
-                        'Andar': str(andar_final), 'Sala': str(sala_upper), 'Nome': str(nome_upper), 
+                        'Andar': str(andar_final).upper(), 'Sala': str(sala_upper).upper(), 'Nome': str(nome_upper).upper(), 
                         'CPF': str(cpf_formatado), 
-                        'Data de Nascimento': aplicar_mascara_data(novo_nascimento), # APLICA MÁSCARA DATA
-                        'Telefone': aplicar_mascara_telefone(novo_telefone), # APLICA MÁSCARA TELEFONE
-                        'Endereço': str(novo_endereco).upper(), 'E-mail': str(novo_email),
-                        'Locador': str(novo_locador).upper(), 'Valor (R$)': f"{novo_valor_aluguel:.2f}".replace('.', ',')
+                        'Data de Nascimento': aplicar_mascara_data(novo_nascimento), 
+                        'Telefone': aplicar_mascara_telefone(novo_telefone), 
+                        'Endereço': str(novo_endereco).strip().upper(), 
+                        'E-mail': str(novo_email).strip().upper(),
+                        'Locador': str(novo_locador).strip().upper(), 'Valor (R$)': f"{novo_valor_aluguel:.2f}".replace('.', ',')
                     }
                     
                     idx_mes_inicio = MESES_LISTA.index(mes_inicio)
@@ -502,6 +511,7 @@ with aba_cadastro:
                     st.session_state.df_sistema = pd.concat([st.session_state.df_sistema, pd.DataFrame([nova_linha_dados])], ignore_index=True)
                     guardar_na_base_dados()
                     st.success(f"✅ Cadastro anual criado com sucesso para {nome_upper}!")
+                    st.rerun()
             else:
                 st.error("❌ Preencha os campos obrigatórios (Andar, Nome e Sala).")
 
@@ -527,7 +537,7 @@ with aba_base:
     m1, m2, m3 = st.columns(3)
     m1.metric("Contratos Ativos", total_contratos)
     m2.metric("Mensalidades Adimplentes (Pagas)", total_pagos)
-    m3.metric("Mensalidades Inadimplentes (Atrasadas)", total_inadimplentes, delta="- Cuidado Financeiro" if total_inadimplentes > 0 else "Tudo em Dia", delta_color="inverse")
+    m3.metric("Mensalidades Inadimplentes (Atrasadas)", total_inadimplentes, delta="- Pendências Anuais" if total_inadimplentes > 0 else "Tudo em Dia", delta_color="inverse")
     st.write("---")
     
     acao_db = st.radio("Selecione a ação na Base de Dados:", ["📊 Visualizar Tabela Completa", "✏️ Editar Cadastro", "🗑️ Excluir Cadastro"], horizontal=True)
@@ -549,7 +559,7 @@ with aba_base:
                 res_ed = df_atual[df_atual['Nome'].astype(str).str.contains(busca_editar, case=False, na=False) | 
                                   df_atual['Sala'].astype(str).str.contains(busca_editar, case=False, na=False)]
                 if not res_ed.empty:
-                    opcoes_ed = [f"Linha {i} | Sala {df_atual.loc[i, 'Sala']} - {df_atual.loc[i, 'Nome']}" for i in res_ed.index]
+                    opcoes_ed = [f"Sala {df_atual.loc[i, 'Sala']} - {df_atual.loc[i, 'Nome']}" for i in res_ed.index]
                     selecao_ed = st.selectbox("Selecione qual cadastro deseja editar:", opcoes_ed)
                     idx_ed = res_ed.index[opcoes_ed.index(selecao_ed)]
                     reg_ed = df_atual.loc[idx_ed]
@@ -577,23 +587,23 @@ with aba_base:
                                 with m_cols[idx % 4]: edit_meses[m_nome] = st.text_input(m_nome, value=str(reg_ed.get(m_nome, '')))
                         
                         if st.form_submit_button("💾 Confirmar Edição"):
+                            # FORÇANDO CAIXA ALTA E MÁSCARAS TAMBÉM NA EDIÇÃO
                             st.session_state.df_sistema.loc[idx_ed, 'Andar'] = str(edit_andar).strip().upper()
                             st.session_state.df_sistema.loc[idx_ed, 'Sala'] = str(edit_sala).strip().upper()
                             st.session_state.df_sistema.loc[idx_ed, 'Nome'] = str(edit_nome).strip().upper()
-                            st.session_state.df_sistema.loc[idx_ed, 'CPF'] = aplicar_mascara_cpf(str(edit_cpf).strip().upper())
-                            st.session_state.df_sistema.loc[idx_ed, 'Data de Nascimento'] = aplicar_mascara_data(str(edit_nascimento).strip())
-                            st.session_state.df_sistema.loc[idx_ed, 'Telefone'] = aplicar_mascara_telefone(str(edit_telefone).strip())
-                            st.session_state.df_sistema.loc[idx_ed, 'E-mail'] = str(edit_email).strip()
+                            st.session_state.df_sistema.loc[idx_ed, 'CPF'] = aplicar_mascara_cpf(edit_cpf)
+                            st.session_state.df_sistema.loc[idx_ed, 'Data de Nascimento'] = aplicar_mascara_data(edit_nascimento)
+                            st.session_state.df_sistema.loc[idx_ed, 'Telefone'] = aplicar_mascara_telefone(edit_telefone)
+                            st.session_state.df_sistema.loc[idx_ed, 'E-mail'] = str(edit_email).strip().upper()
                             st.session_state.df_sistema.loc[idx_ed, 'Endereço'] = str(edit_endereco).strip().upper()
                             st.session_state.df_sistema.loc[idx_ed, 'Locador'] = str(edit_locador).strip().upper()
                             st.session_state.df_sistema.loc[idx_ed, 'Valor (R$)'] = str(edit_valor).strip()
                             for m_nome in MESES_LISTA: st.session_state.df_sistema.loc[idx_ed, m_nome] = str(edit_meses[m_nome]).strip()
                             guardar_na_base_dados()
-                            st.success("✅ O Cadastro foi atualizado!")
+                            st.success("¼ O Cadastro foi atualizado!")
                             st.rerun()
                 else: st.warning("Nenhum registro encontrado.")
 
-    # CORREÇÃO DA LÓGICA DE EXCLUSÃO
     elif acao_db == "🗑️ Excluir Cadastro":
         if not df_atual.empty:
             busca_ex = st.text_input("Introduza o Nome do Locatário ou Sala para Excluir:", key="busca_ex")
@@ -601,20 +611,19 @@ with aba_base:
                 res_ex = df_atual[df_atual['Nome'].astype(str).str.contains(busca_ex, case=False, na=False) | 
                                   df_atual['Sala'].astype(str).str.contains(busca_ex, case=False, na=False)]
                 if not res_ex.empty:
-                    opcoes_ex = [f"Linha {i} | Sala {df_atual.loc[i, 'Sala']} - {df_atual.loc[i, 'Nome']}" for i in res_ex.index]
+                    opcoes_ex = [f"Sala {df_atual.loc[i, 'Sala']} - {df_atual.loc[i, 'Nome']}" for i in res_ex.index]
                     selecao_ex = st.selectbox("Selecione qual cadastro EXCLUIR:", opcoes_ex)
                     idx_ex = res_ex.index[opcoes_ex.index(selecao_ex)]
                     
-                    st.warning(f"Você apagará **{df_atual.loc[idx_ex, 'Nome']}** permanentemente da base de dados.")
+                    st.warning(f"Aviso: Irá apagar **{df_atual.loc[idx_ex, 'Nome']}** permanentemente da base de dados.")
                     
-                    # A confirmação e o botão agora estão separados para não bugar o Streamlit
-                    confirmar = st.checkbox("Tenho certeza que quero excluir este cadastro.")
+                    confirmar = st.checkbox("Confirmo que quero remover esta linha permanentemente.")
                     if st.button("🚨 EXCLUIR DEFINITIVAMENTE"):
                         if confirmar:
                             st.session_state.df_sistema = st.session_state.df_sistema.drop(idx_ex).reset_index(drop=True)
                             guardar_na_base_dados()
-                            st.success("🗑️ Linha removida!")
+                            st.success("🗑️ Linha removida com sucesso!")
                             st.rerun()
                         else:
-                            st.error("⚠️ Para excluir, marque a caixa de confirmação primeiro.")
+                            st.error("⚠️ Marque a caixa de confirmação primeiro.")
                 else: st.warning("Nenhum registro encontrado.")
