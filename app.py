@@ -63,7 +63,6 @@ if not st.session_state['autenticado']:
     st.stop()
 
 # ================= CONFIGURAÇÕES DE E-MAIL ================= #
-# Insira aqui os seus dados do Gmail e a sua Senha de App de 16 dígitos
 EMAIL_REMETENTE = "my29house@gmail.com"
 SENHA_APP_EMAIL = "nixhkcpnhmyqwyhu"
 EMAIL_ADMINISTRACAO = "mauriciosaid@.adv.oabsp.org.br, fabianofsilva1977@gmail.com"
@@ -214,58 +213,64 @@ def mapear_dados_mes(celula, valor_base, andar, sala, nome, cpf, mes_nome):
             elif parte.startswith("VENC:"): dados['Vencimento'] = parte.split(':')[1].strip()
     return dados
 
-# ================= GERADOR DE PDF AJUSTADO PARA MPT-II (48mm ÚTIL) ================= #
+# ================= GERADOR DE PDF AJUSTADO (MPT-II 40mm) ================= #
 def gerar_recibo_pdf(dados):
-    pdf = FPDF(orientation='P', unit='mm', format=(58, 220))
-    pdf.set_margins(left=4, top=5, right=4)
+    # Formato adaptado: 58mm total, Altura reduzida para 140mm (elimina folha em branco extra e caracteres estranhos)
+    pdf = FPDF(orientation='P', unit='mm', format=(58, 140))
+    
+    # Margem esquerda aumentada para 9mm (empurra os 40mm seguros perfeitamente para o centro)
+    pdf.set_margins(left=9, top=5, right=2)
     pdf.add_page()
     pdf.set_line_width(0.3)
     pdf.set_text_color(0, 0, 0)
 
+    # Largura de segurança estritamente controlada para 40mm
+    LARGURA_SEGURA = 40
+
     pdf.set_font("Helvetica", 'B', 9)
-    pdf.multi_cell(48, 4, "ESPACO BOX ELISA\nRECIBO DE PAGAMENTO\nDE ALUGUEL", align='C')
+    pdf.multi_cell(LARGURA_SEGURA, 4, "ESPACO BOX ELISA\nRECIBO DE PAGAMENTO\nDE ALUGUEL", align='C')
     pdf.ln(2)
-    pdf.line(4, pdf.get_y(), 54, pdf.get_y())
+    pdf.line(9, pdf.get_y(), 9 + LARGURA_SEGURA, pdf.get_y())
     pdf.ln(2)
     
     pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(12, 4, "Ref:", 0, 0)
+    pdf.cell(10, 4, "Ref:", 0, 0)
     pdf.set_font("Helvetica", '', 8)
-    pdf.cell(36, 4, remover_acentos(str(dados.get('Mês de Referencia', ''))).upper(), 0, 1)
+    pdf.cell(30, 4, remover_acentos(str(dados.get('Mês de Referencia', ''))).upper(), 0, 1)
     
     pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(48, 4, "Locatario:", 0, 1)
+    pdf.cell(LARGURA_SEGURA, 4, "Locatario:", 0, 1)
     pdf.set_font("Helvetica", '', 8)
     cpf = str(dados.get('CPF', '')).strip()
     nome_completo = remover_acentos(str(dados.get('Nome', ''))).upper()
     if cpf: nome_completo += f"\nCPF: {cpf}"
-    pdf.multi_cell(48, 4, nome_completo)
+    pdf.multi_cell(LARGURA_SEGURA, 4, nome_completo)
     
     pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(12, 4, "Sala:", 0, 0)
+    pdf.cell(10, 4, "Sala:", 0, 0)
     pdf.set_font("Helvetica", '', 8)
-    pdf.cell(36, 4, f"{str(dados.get('Sala', '')).upper()} ({str(dados.get('Andar', '')).upper()})", 0, 1)
+    pdf.cell(30, 4, f"{str(dados.get('Sala', '')).upper()} ({str(dados.get('Andar', '')).upper()})", 0, 1)
     
     pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(12, 4, "Venc.:", 0, 0)
+    pdf.cell(10, 4, "Venc.:", 0, 0)
     pdf.set_font("Helvetica", '', 8)
-    pdf.cell(36, 4, str(dados.get('Vencimento', '')), 0, 1)
+    pdf.cell(30, 4, str(dados.get('Vencimento', '')), 0, 1)
 
     pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(15, 4, "Pago em:", 0, 0)
+    pdf.cell(14, 4, "Pago em:", 0, 0)
     pdf.set_font("Helvetica", '', 8)
-    pdf.cell(33, 4, str(dados.get('Data do Pagamento', '')), 0, 1)
+    pdf.cell(26, 4, str(dados.get('Data do Pagamento', '')), 0, 1)
     
     dias_atraso = dados.get('Dias de Atraso', 0)
     if dias_atraso > 0:
         pdf.ln(1)
         pdf.set_font("Helvetica", 'BI', 7.5)
         pdf.set_text_color(200, 0, 0)
-        pdf.multi_cell(48, 3.5, f"PAGO COM {dias_atraso} DIA(S) DE ATRASO")
+        pdf.multi_cell(LARGURA_SEGURA, 3.5, f"PAGO COM {dias_atraso} DIA(S) DE ATRASO")
         pdf.set_text_color(0, 0, 0)
     
     pdf.ln(2)
-    pdf.line(4, pdf.get_y(), 54, pdf.get_y())
+    pdf.line(9, pdf.get_y(), 9 + LARGURA_SEGURA, pdf.get_y())
     pdf.ln(2)
     
     valor_aluguel = converter_para_float(dados.get('Valor (R$)', 0))
@@ -274,40 +279,40 @@ def gerar_recibo_pdf(dados):
     total_recebido = converter_para_float(dados.get('Valor Recebido', 0))
 
     pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(20, 4, "Aluguel:", 0, 0)
+    pdf.cell(16, 4, "Aluguel:", 0, 0)
     pdf.set_font("Helvetica", '', 8)
-    pdf.cell(28, 4, formatar_moeda(valor_aluguel), 0, 1, 'R')
+    pdf.cell(24, 4, formatar_moeda(valor_aluguel), 0, 1, 'R')
     
     pdf.set_font("Helvetica", 'B', 8)
     pdf.cell(20, 4, "Juros Pr-Rata:", 0, 0)
     pdf.set_font("Helvetica", '', 8)
-    pdf.cell(28, 4, formatar_moeda(juros), 0, 1, 'R')
+    pdf.cell(20, 4, formatar_moeda(juros), 0, 1, 'R')
     
     pdf.set_font("Helvetica", 'B', 8)
-    pdf.cell(20, 4, "Multa:", 0, 0)
+    pdf.cell(16, 4, "Multa:", 0, 0)
     pdf.set_font("Helvetica", '', 8)
-    pdf.cell(28, 4, formatar_moeda(multa), 0, 1, 'R')
+    pdf.cell(24, 4, formatar_moeda(multa), 0, 1, 'R')
     
     pdf.ln(1)
     pdf.set_font("Helvetica", 'B', 9)
-    pdf.cell(18, 5, "TOTAL:", 0, 0)
-    pdf.cell(30, 5, formatar_moeda(total_recebido), 0, 1, 'R')
+    pdf.cell(16, 5, "TOTAL:", 0, 0)
+    pdf.cell(24, 5, formatar_moeda(total_recebido), 0, 1, 'R')
     
     pdf.ln(2)
-    pdf.line(4, pdf.get_y(), 54, pdf.get_y())
+    pdf.line(9, pdf.get_y(), 9 + LARGURA_SEGURA, pdf.get_y())
     pdf.ln(2)
     
     pdf.set_font("Helvetica", 'B', 8)
     pdf.cell(12, 4, "Forma:", 0, 0)
     pdf.set_font("Helvetica", '', 8)
-    pdf.cell(36, 4, remover_acentos(str(dados.get('Forma de Pagamento', ''))).upper(), 0, 1)
+    pdf.cell(28, 4, remover_acentos(str(dados.get('Forma de Pagamento', ''))).upper(), 0, 1)
     
     obs = remover_acentos(str(dados.get('Observações', ''))).strip().upper()
     if obs and obs != "NENHUMA" and obs != "NAN":
         pdf.set_font("Helvetica", 'B', 8)
-        pdf.cell(48, 4, "Obs:", 0, 1)
+        pdf.cell(LARGURA_SEGURA, 4, "Obs:", 0, 1)
         pdf.set_font("Helvetica", '', 7.5)
-        pdf.multi_cell(48, 3.5, obs)
+        pdf.multi_cell(LARGURA_SEGURA, 3.5, obs)
         
     pdf.ln(6)
     
@@ -315,15 +320,15 @@ def gerar_recibo_pdf(dados):
     recebedor_nome = remover_acentos(str(dados.get('Recebedor', 'RECEBEDOR')).upper())
     
     pdf.set_font("Helvetica", '', 7)
-    pdf.cell(48, 3, "_________________________________", 0, 1, 'C')
+    pdf.cell(LARGURA_SEGURA, 3, "________________________", 0, 1, 'C')
     pdf.set_font("Helvetica", 'B', 7.5)
-    pdf.multi_cell(48, 3.5, f"LOCADOR: {locador_nome}", align='C')
+    pdf.multi_cell(LARGURA_SEGURA, 3.5, f"LOCADOR: {locador_nome}", align='C')
     
     pdf.ln(4)
     pdf.set_font("Helvetica", '', 7)
-    pdf.cell(48, 3, "_________________________________", 0, 1, 'C')
+    pdf.cell(LARGURA_SEGURA, 3, "________________________", 0, 1, 'C')
     pdf.set_font("Helvetica", 'B', 7.5)
-    pdf.multi_cell(48, 3.5, f"RECEBEDOR: {recebedor_nome}", align='C')
+    pdf.multi_cell(LARGURA_SEGURA, 3.5, f"RECEBEDOR: {recebedor_nome}", align='C')
     
     mes_ref_limpo = remover_acentos(str(dados.get('Mês de Referencia', 'Sem_Mes'))).replace("/", "-")
     data_pag_limpa = str(dados.get('Data do Pagamento', 'Sem_Data')).replace("/", "-")
