@@ -63,7 +63,7 @@ if not st.session_state['autenticado']:
     st.stop()
 
 # ================= CONFIGURAÇÕES DE E-MAIL ================= #
-EEMAIL_REMETENTE = "my29house@gmail.com"
+EMAIL_REMETENTE = "my29house@gmail.com"
 SENHA_APP_EMAIL = "nixhkcpnhmyqwyhu"
 EMAIL_ADMINISTRACAO = "mauriciosaid@.adv.oabsp.org.br, fabianofsilva1977@gmail.com"
 
