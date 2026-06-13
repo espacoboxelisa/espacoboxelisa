@@ -65,7 +65,7 @@ if not st.session_state['autenticado']:
 # ================= CONFIGURAÇÕES DE E-MAIL ================= #
 # Insira aqui os seus dados do Gmail e a sua Senha de App de 16 dígitos
 EMAIL_REMETENTE = "my29house@gmail.com"
-SENHA_APP_EMAIL = "uttehhhxedoflmzi"
+SENHA_APP_EMAIL = "nixhkcpnhmyqwyhu"
 EMAIL_ADMINISTRACAO = "mauriciosaid@.adv.oabsp.org.br, fabianofsilva1977@gmail.com"
 
 # ================= CONFIGURAÇÕES INICIAIS DA BASE ================= #
