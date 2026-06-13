@@ -36,8 +36,8 @@ st.markdown("""
 
 # ================= SISTEMA DE LOGIN ================= #
 USUARIOS_PERMITIDOS = {
-    "admin": "admin123",
-    "recebedor": "aluguel2026"
+    "admin": "78561248",
+    "recebedor": "11230448"
 }
 
 if 'autenticado' not in st.session_state:
